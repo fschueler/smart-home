@@ -1,8 +1,10 @@
-@()
+@(dhtInfo: model.DHT22Reading)
 
 @main("Smart Home") {
 <h1>Collection of Sensors and Devices</h1>
 <div>
-    Nothing to see here.
+    <h2>DHT22</h2>
+    <div>Temperature: @(dhtInfo.temperature)</div>
+    <div>Humidity: @(dhtInfo.humidity)</div>
 </div>
 }

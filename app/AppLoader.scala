@@ -5,9 +5,9 @@ import com.softwaremill.macwire._
 import _root_.controllers.AssetsComponents
 import _root_.controllers.MainController
 import play.api.libs.ws.ahc.AhcWSComponents
-import play.api.routing.Router
 import play.filters.HttpFiltersComponents
 import router.Routes
+import services.DHT22Service
 
 class AppApplicationLoader extends ApplicationLoader {
   def load(context: Context): Application = {
@@ -32,4 +32,7 @@ class AppComponents(context: Context)
 
   // controllers
   lazy val mainController = wire[MainController]
+
+  // services
+  lazy val dht22Service = wire[DHT22Service]
 }
