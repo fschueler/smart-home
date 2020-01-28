@@ -24,6 +24,12 @@ class DeviceActor(context: ActorContext[DeviceActor.Command],
   context.log.info("Device actor {}-{} started.", groupId, deviceId)
 
   override def onMessage(msg: Command): Behavior[Command] = msg match {
+    case RecordTemperature(id, value, replyTo) =>
+      context.log.info("Recorded temperature reading {} with {}", value, id)
+      lastReading = Some(value)
+      replyTo ! TemperatureRecorded(id)
+      this
+
     case ReadTemperature(id, replyTo) =>
       replyTo ! RespondTemperature(id, lastReading)
       this
@@ -41,7 +47,7 @@ object DeviceActor {
   def apply(groupId: String, deviceId: String): Behavior[Command] =
     Behaviors.setup(context => new DeviceActor(context, groupId, deviceId))
 
-  /** Device actor protocol
+  /** Device actor read protocol
     *
     * Device actors can be queried for temperature updates. To enable resend-instructions for failed requests
     * by other actors, we need to include request IDs into protocol messages. This allows us to correlate
@@ -49,7 +55,12 @@ object DeviceActor {
     */
   sealed trait Command
   final case class ReadTemperature(requestId: Long,
-                                   replyTo: ActorRef[RespondTemperature])
-      extends Command
+                                   replyTo: ActorRef[RespondTemperature]) extends Command
   final case class RespondTemperature(requestId: Long, value: Option[Double])
+
+  // write protocol
+  final case class RecordTemperature(requestId: Long,
+                                     value: Double,
+                                     replyTo: ActorRef[TemperatureRecorded]) extends Command
+  final case class TemperatureRecorded(requestId: Long)
 }
