@@ -4,6 +4,8 @@ import play.api.mvc._
 import com.softwaremill.macwire._
 import _root_.controllers.AssetsComponents
 import _root_.controllers.MainController
+import actors.IoTSupervisor
+import akka.actor.typed.ActorSystem
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.filters.HttpFiltersComponents
 import router.Routes
@@ -28,7 +30,11 @@ class AppComponents(context: Context)
   val log = Logger(this.getClass)
 
   override lazy val controllerComponents = wire[DefaultControllerComponents]
+  lazy val prefix = "/"
   override lazy val router = wire[Routes]
+
+  // actor system
+  lazy val typedActorSystem = ActorSystem[Nothing](IoTSupervisor(), "iot-system")
 
   // controllers
   lazy val mainController = wire[MainController]
