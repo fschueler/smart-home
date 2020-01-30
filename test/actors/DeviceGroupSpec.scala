@@ -1,7 +1,9 @@
 package actors
 
+import actors.Device.Passivate
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.scalatest.WordSpecLike
+
 import scala.concurrent.duration._
 
 class DeviceGroupSpec extends ScalaTestWithActorTestKit with WordSpecLike {
@@ -41,6 +43,61 @@ class DeviceGroupSpec extends ScalaTestWithActorTestKit with WordSpecLike {
 
       groupActor ! RequestTrackDevice("wrongGroup", "device1", probe.ref)
       probe.expectNoMessage(500.milliseconds)
+    }
+
+    "return same actor for same deviceId" in {
+      val probe = createTestProbe[DeviceRegistered]()
+      val groupActor = spawn(DeviceGroup("group"))
+
+      groupActor ! RequestTrackDevice("group", "device1", probe.ref)
+      val registered1 = probe.receiveMessage()
+
+      groupActor ! RequestTrackDevice("group", "device1", probe.ref)
+      val registered2 = probe.receiveMessage()
+
+      registered1.device shouldEqual registered2.device
+    }
+
+    "be ablt to list active devices" in {
+      val registeredProbe = createTestProbe[DeviceRegistered]()
+      val groupActor = spawn(DeviceGroup("group"))
+
+      groupActor ! RequestTrackDevice("group", "device1", registeredProbe.ref)
+      registeredProbe.receiveMessage()
+
+      groupActor ! RequestTrackDevice("group", "device2", registeredProbe.ref)
+      registeredProbe.receiveMessage()
+
+      val deviceListProbe = createTestProbe[ReplyDeviceList]()
+      groupActor ! RequestDeviceList(requestId = 0, groupId = "group", deviceListProbe.ref)
+      deviceListProbe.expectMessage(ReplyDeviceList(requestId = 0, Set("device1", "device2")))
+    }
+
+    "be able to list active devices after one shuts down" in {
+      val registeredProbe = createTestProbe[DeviceRegistered]()
+      val groupActor = spawn(DeviceGroup("group"))
+
+      groupActor ! RequestTrackDevice("group", "device1", registeredProbe.ref)
+      val registered1 = registeredProbe.receiveMessage()
+      val toShutDown = registered1.device
+
+      groupActor ! RequestTrackDevice("group", "device2", registeredProbe.ref)
+      registeredProbe.receiveMessage()
+
+      val deviceListProbe = createTestProbe[ReplyDeviceList]()
+      groupActor ! RequestDeviceList(requestId = 0, groupId = "group", deviceListProbe.ref)
+      deviceListProbe.expectMessage(ReplyDeviceList(requestId = 0, Set("device1", "device2")))
+
+      toShutDown ! Passivate
+      // expect the actor to be shutdown or stop within the probe timeout
+      registeredProbe.expectTerminated(toShutDown, registeredProbe.remainingOrDefault)
+
+      // using awaitAssert to retry because it might take longer for the groupActor
+      // to see the Terminated, that order is undefined
+      registeredProbe.awaitAssert {
+        groupActor ! RequestDeviceList(requestId = 1, groupId = "group", deviceListProbe.ref)
+        deviceListProbe.expectMessage(ReplyDeviceList(requestId = 1, Set("device2")))
+      }
     }
   }
 }
