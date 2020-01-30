@@ -12,12 +12,12 @@ import akka.actor.typed.{ActorRef, Behavior, PostStop, Signal}
   * @param groupId Id of the device group this actor belongs to.
   * @param deviceId Id of the device this actor reads from.
   */
-class DeviceActor(context: ActorContext[DeviceActor.Command],
-                  groupId: String,
-                  deviceId: String)
-    extends AbstractBehavior[DeviceActor.Command](context) {
+class Device(context: ActorContext[Device.Command],
+             groupId: String,
+             deviceId: String)
+    extends AbstractBehavior[Device.Command](context) {
 
-  import DeviceActor._
+  import Device._
 
   var lastReading: Option[Double] = None
 
@@ -42,10 +42,10 @@ class DeviceActor(context: ActorContext[DeviceActor.Command],
   }
 }
 
-object DeviceActor {
+object Device {
 
   def apply(groupId: String, deviceId: String): Behavior[Command] =
-    Behaviors.setup(context => new DeviceActor(context, groupId, deviceId))
+    Behaviors.setup(context => new Device(context, groupId, deviceId))
 
   /** Device actor read protocol
     *
