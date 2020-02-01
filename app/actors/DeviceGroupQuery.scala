@@ -11,6 +11,9 @@ import scala.concurrent.duration.FiniteDuration
   * The actor queries all devices in a group and waits for their responses. It handles delays with timeouts,
   * device failures, and terminated devices.
   *
+  * The actor keeps all state that is relevant for a query so that the DeviceGroup actor doesn't have to
+  * deal with keeping query state directly.
+  *
   * @param deviceIdToActor Map of all devices that are currently connected.
   * @param requestId Id of the current query.
   * @param requester The actor that sent the request.

@@ -1,13 +1,19 @@
 package actors
 
+import actors.DeviceManager.RequestAllTemperatures
 import akka.actor.typed.{ActorRef, Behavior, PostStop, Signal}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import scala.concurrent.duration._
 
 /** Represents a group of devices in some logical grouping (e.g. different rooms, houses, etc.).
   *
   * A device group handles device registration by looking up devices and returning their reference or
   * creating new actors for them.
   * The device group actor also keeps track of existing devices and stops actors when devices are removed.
+  *
+  * Querying devices happens through the DeviceGroupQuery actor. This allows multiple parallel queries and
+  * also long running, async queries. Additionally, it encapsulates query state into the query actor and
+  * keeps the DeviceGroup actor state small.
   *
   * @param context Actor Context.
   * @param groupId ID of the group that this actor manages.
@@ -52,6 +58,16 @@ class DeviceGroup(context: ActorContext[DeviceGroup.Command], groupId: String)
     case RequestDeviceList(requestId, gId, replyTo) =>
       if (gId == groupId) {
         replyTo ! ReplyDeviceList(requestId, deviceIdToActor.keySet)
+        this
+      } else {
+        Behaviors.unhandled
+      }
+
+    case RequestAllTemperatures(requestId, gId, replyTo) =>
+      if (gId == groupId) {
+        context.spawnAnonymous(
+          DeviceGroupQuery(deviceIdToActor, requestId = requestId, requester = replyTo, 3.seconds)
+        )
         this
       } else {
         Behaviors.unhandled
