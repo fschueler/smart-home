@@ -31,7 +31,7 @@ class Device(context: ActorContext[Device.Command],
       this
 
     case ReadTemperature(id, replyTo) =>
-      replyTo ! RespondTemperature(id, lastReading)
+      replyTo ! RespondTemperature(id, deviceId, lastReading)
       this
 
     case Passivate =>
@@ -59,7 +59,7 @@ object Device {
   sealed trait Command
   final case class ReadTemperature(requestId: Long,
                                    replyTo: ActorRef[RespondTemperature]) extends Command
-  final case class RespondTemperature(requestId: Long, value: Option[Double])
+  final case class RespondTemperature(requestId: Long, deviceId: String, value: Option[Double])
 
   // write protocol
   final case class RecordTemperature(requestId: Long,

@@ -68,6 +68,22 @@ object DeviceManager {
       with DeviceGroup.Command
 
   final case class DeviceRegistered(device: ActorRef[Device.Command])
-
   private final case class DeviceGroupTerminated(groupId: String) extends Command
+
+  // device query protocol
+  final case class RequestAllTemperatures(
+                                         requestId: Long,
+                                         groupId: String,
+                                         replyTo: ActorRef[RespondAllTemperatures]
+                                         ) extends DeviceGroupQuery.Command
+  with DeviceGroup.Command with DeviceManager.Command
+
+  final case class RespondAllTemperatures(requestId: Long, temperatures: Map[String, TemperatureReading])
+
+  // reading states
+  sealed trait TemperatureReading
+  final case class Temperature(value: Double) extends TemperatureReading
+  case object TemperatureNotAvailable extends TemperatureReading
+  case object DeviceNotAvailable extends TemperatureReading
+  case object DeviceTimedOut extends TemperatureReading
 }
