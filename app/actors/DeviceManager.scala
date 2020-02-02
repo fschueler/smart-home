@@ -2,7 +2,7 @@ package actors
 
 import actors.DeviceGroup.{ReplyDeviceList, RequestDeviceList}
 import akka.actor.typed.{ActorRef, Behavior, PostStop, Signal}
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext}
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 
 /** Actor that takes care of registering new devices.
   *
@@ -22,7 +22,7 @@ class DeviceManager(context: ActorContext[DeviceManager.Command])
 
   override def onMessage(msg: Command): Behavior[Command] = msg match {
       // forward requests for new deviced to the responsible device group actor
-    case trackMsg @ RequestTrackDevice(groupId, _, replyTo) =>
+    case trackMsg @ RequestTrackDevice(groupId, _, _) =>
       groupIdToActor.get(groupId) match {
         case Some(ref) => ref ! trackMsg
         case None =>
@@ -58,6 +58,9 @@ class DeviceManager(context: ActorContext[DeviceManager.Command])
 }
 
 object DeviceManager {
+
+  def apply(): Behavior[Command] =
+    Behaviors.setup(context => new DeviceManager(context))
 
   // device registration protocol
   trait Command

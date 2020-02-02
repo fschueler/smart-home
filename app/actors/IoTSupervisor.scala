@@ -1,6 +1,7 @@
 package actors
 
-import akka.actor.typed.{Behavior, PostStop, Signal}
+import actors.IoTSupervisor.Command
+import akka.actor.typed._
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 
 /** The toplevel actor (user guardian) for the IoT application.
@@ -9,15 +10,33 @@ import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
   *
   * @param context Actor Context.
   */
-class IoTSupervisor(context: ActorContext[Nothing]) extends AbstractBehavior[Nothing](context) {
+class IoTSupervisor(context: ActorContext[Command])
+    extends AbstractBehavior[Command](context) {
   context.log.info("IoT Supervisor started.")
 
-  // Not handling any messages in this actor
-  override def onMessage(msg: Nothing): Behavior[Nothing] = {
-    Behaviors.unhandled
+  private var deviceManager: Option[ActorRef[DeviceManager.Command]] = None
+
+  import IoTSupervisor._
+
+  override def onMessage(msg: Command): Behavior[Command] = msg match {
+    case Start(name, replyTo) =>
+      deviceManager match {
+        case Some(dm) =>
+          replyTo ! StartupResponse(dm)
+        case None =>
+          val dm = context.spawn(DeviceManager(), name)
+          context.watch(dm)
+          deviceManager = Some(dm)
+          replyTo ! StartupResponse(dm)
+      }
+      this
+
+    case DeviceManagerTerminated(name) =>
+      context.log.info(s"Device manager $name terminated.")
+      this
   }
 
-  override def onSignal: PartialFunction[Signal, Behavior[Nothing]] = {
+  override def onSignal: PartialFunction[Signal, Behavior[Command]] = {
     case PostStop =>
       context.log.info("IoT Supervisor stopped.")
       this
@@ -25,7 +44,17 @@ class IoTSupervisor(context: ActorContext[Nothing]) extends AbstractBehavior[Not
 }
 
 object IoTSupervisor {
-  def apply(): Behavior[Nothing] = {
-    Behaviors.setup[Nothing](context => new IoTSupervisor(context))
+  def apply(): Behavior[Command] = {
+    Behaviors.setup { context =>
+      new IoTSupervisor(context)
+    }
   }
+
+  sealed trait Command
+  final case class Start(name: String, replyTo: ActorRef[StartupResponse])
+      extends Command
+  final case class StartupResponse(
+      deviceManager: ActorRef[DeviceManager.Command])
+
+  private final case class DeviceManagerTerminated(name: String) extends Command
 }
